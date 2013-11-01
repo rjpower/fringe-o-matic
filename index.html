@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<style>
+body {
+	padding: 10px;
+	font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+table td {
+	border-top:1px solid #e0e0e0;
+}
+</style>
+  <meta charset="utf-8">
+  <title>Fringe-o-matic</title>
+  <script src="http://code.jquery.com/jquery-2.0.3.min.js"></script>
+  <script src="./underscore-min.js"></script>
+  <script src="./shows.js"></script>
+  <style>
+
+  </style>
+
+  <script>
+    $(function() {
+      _.each(shows, 
+        function(show, k) { 
+          show.times = _.map(show.times, function(t) { return new Date(t); } );
+        }
+      );
+
+      datetimes = _.chain(shows)
+      .map(function(v, k) { 
+        return v.times
+      })
+      .flatten(true)
+      .unique()
+      .sortBy(function(v) { return v.getTime(); });
+
+      dates = datetimes.map(function(v) { return v.getDate(); }).unique().value();
+      dates.unshift('');
+      _.map(dates, function(v) { $('#datelist').append('<option>' + v + '</option>') });
+
+      times = [ '', 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+      _.map(times, function(v) { $('#timelist').append('<option>' + v + '</option>') });
+     
+      shownames = _.keys(shows)
+      shownames.unshift('');
+      _.map(shownames, function(v) { $('#showlist').append('<option>' + v + '</option>') });
+
+
+      venues = _.chain(shows)
+      .map(function(v, k) { return v.venue; })
+      .unique()
+      .value();
+
+      venues.unshift('');
+      _.map(venues, function(v) { $('#venuelist').append('<option>' + v + '</option>') });
+
+      $('#timelist').change(show_list);
+      $('#showlist').change(show_list);
+      $('#venuelist').change(show_list);
+      $('#datelist').change(show_list);
+
+      show_list();
+    });
+
+    function clear_shows() {
+      $('#shows').empty();
+      $('#num_shows').empty();
+    }
+
+    function add_show(show) {
+      show_node = $('<tr></tr>');
+      show_node.append('<td>'+ show.title + '</td>');
+      show_node.append('<td>' + show.info + '<b>Venue</b>: ' + show.venue +'</td>');
+
+      times_node = $('<td width=100px></td>');
+      _.map(show.times, function(v) {
+        time = v.getHours() - 12;
+        if (time == 0) { time = 12; }
+
+        minutes = v.getMinutes();
+        if (minutes == 0) { minutes = '00'; }
+        time += ':' + minutes;
+        time += 'PM';
+
+
+        times_node.append('8/' + v.getDate() + ' ' + time + '<br/>');
+      });
+      show_node.append(times_node);
+      $('#shows').append(show_node);
+    }
+
+    function show_list() {
+      date = $('#datelist option:selected').text();
+      time = $('#timelist option:selected').text();
+      title = $('#showlist option:selected').text();
+      venue = $('#venuelist option:selected').text();
+      matching = _.map(shows, function(show, k) {
+        var dm = show.times;
+
+        if (date != '') {
+          dm = _.filter(dm, function(dt) {
+            return dt.getDate() == date;
+          });
+        }
+
+        if (time != '') {
+          if (time == 12) { time = 0; }
+          dm = _.filter(dm, function(dt) {
+            return dt.getHours() >= Number(time) + 12;
+          });
+        }
+
+        if (venue != '') {
+          if (show.venue != venue) { return -1; }
+        }
+
+        if (title != '') {
+          if (show.title != title) { return -1; }
+        }
+        
+        if (dm.length == 0) { return -1; }
+        return { 'title' : show.title, 'venue' : show.venue, 'times' : dm, 'info' : show.info };
+      });
+
+      matching = _.filter(matching, function(v) { return v != -1; });
+      clear_shows();
+      
+      $('#shows').append('<tr><th>Title</th><th>Info</th><th>Times</th></tr>');
+      _.map(matching, function(show) {
+        add_show(show);
+      });
+
+      $('#num_shows').append(matching.length);
+    }
+  </script>
+</head>
+
+<body>
+  <h1>Fringe-o-matic</h1>
+  <p>A slightly nicer way to find Fringe shows; especially if you're
+    in a rush. </p>
+  
+  <p>The search on the Fringe site works, but forces you
+  to click on each show individually to see what it is that actually
+  matches.  I made it a bit easier by glomming everything together 
+  here for you.</p>
+
+  Specify the date, time, show or venue you're interested in, and 
+  the matching shows will be shown below.
+  <table>
+    <tr><td>Date</td><td> August <select id='datelist'> </select></td></tr>
+    <tr><td>Time</td><td> After <select id='timelist'> </select> PM</td></tr>
+    <tr><td>Show</td><td> <select id='showlist'> </select></td></tr>
+    <tr><td><a href='http://www.fringenyc.org/index.php/shows/venue-guide'>Venue</a></td><td> <select id='venuelist'> </select></td></tr>
+  </table>
+  <hr/>
+  <h2><span id='num_shows'></span> matching shows:</h2>
+  <table id='shows'>
+  </table>
+</body>
+</html>
+
